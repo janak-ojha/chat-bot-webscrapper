@@ -57,4 +57,4 @@ def scrape_website(url,base_domain,depth,visited = None):
 def scrape_urls(website,depth = 0):
     base_domain = urlparse(website).netloc.split('.')[0]
     links = scrape_website(website,base_domain,depth)
-    return links
+    return links()
