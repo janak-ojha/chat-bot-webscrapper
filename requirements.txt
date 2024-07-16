@@ -8,3 +8,4 @@ chromadb==0.3.29
 bs4==0.0.2
 huggingface-hub==0.22.2
 watchdog
+PyPDF2
