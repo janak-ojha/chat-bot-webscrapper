@@ -71,4 +71,69 @@ def get_context_retriever_chain(vector_store):
 
 #define function to create  conversational RAG chain
 def get_conversational_rag_chain(retriever_chain):
+    llm = huggingface_hub(
+        repo_id = "HuggingFaceH4/zephyr-7b-alpha",
+        model_kwargs={"temperature": 0.8, "max_new_tokens": 512, "max_length": 64},
+    )
+    prompt=ChatPromptTemplate.from_messages([
+        ("system","provide a concise and relevant answer to the user's question based on the given context."),
+        MessagesPlaceholder(variable_name="chat_history"),
+        ("human","{input}"),
+        ("system","Context:{context}"),
+        ("human","Answer:")
+    ])
     
+    stuff_documents_chain = create_stuff_documents_chain(llm,prompt)
+    converation_rag_chain = create_retrieval_chain(retriever_chain,stuff_documents_chain)
+    return converation_rag_chain
+
+
+#define function to get response
+def get_response(user_input):
+    retriever_chain = get_context_retriever_chain(st.session_state.vector_state)
+    conversation_rag_chain = get_conversational_rag_chain(retriever_chain)
+    
+    response = conversation_rag_chain.invoke({
+        "chat_history":st.session_state.chat_history,
+        "input": user_input
+    })
+    
+    #extract only one ai response
+    ai_response = response['answer'].split("Answer:",1)[-1].strip()
+    return ai_response
+
+# streamlit app configuration
+
+st.set_page_config(page_title="WEB-AI 🤖: Chat With Websites", page_icon="🤖")
+st.title("WEB-AI 🤖: Your Web Assistant")
+
+#Initialize session state
+if "freeze" not in st.session_state:
+    st.session_state.freeze = False
+if "max_depth" not in st.session_state:
+    st.session_state.max_depth = 1;
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+if "vector_store" not  in st.session_state:
+    st.session_state.vector_State = None
+if "len_urls" not in st.session_state:
+    st.session_state.len_urls = 0
+    
+# side bar    
+with st.sidebar:
+    st.header("WEB-AI 🤖")
+    website_url = st.text_input("Website URL (optional)")
+    
+    st.title("PDF Uploader")
+    uploaded_file = st.file_uploader("Upload a PDF file (optional)",type=['pdf'])
+    
+    st.session_state.max_depth = st.slider("Select maximum scraping depth:",1,5,1,disabled=st.session_state.freeze)
+    if(st.button("Proceed",disabled=st.session_state.freeze)):
+        st.session_state.freeze = True
+    
+    pdf_text = None
+    if uploaded_file is not None:
+        st.write(f"Uploaded file:{uploaded_file.name}")
+        pdf_text = extract_text_from_pdf(uploaded_file)         
+        
+                
